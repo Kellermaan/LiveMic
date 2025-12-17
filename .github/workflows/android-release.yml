@@ -1,0 +1,57 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK (tools only)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android platforms and build-tools
+        run: |
+          yes | sdkmanager "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Build release APK
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: assembleRelease
+          gradle-version: 7.5
+
+      - name: Rename artifact
+        run: |
+          ls app/build/outputs/apk/release
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/LiveMic-${{ github.ref_name }}.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveMic-${{ github.ref_name }}.apk
+          path: app/build/outputs/apk/release/LiveMic-${{ github.ref_name }}.apk
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: app/build/outputs/apk/release/LiveMic-${{ github.ref_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

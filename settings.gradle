@@ -1,0 +1,2 @@
+rootProject.name = "LiveMic"
+include ':app'
